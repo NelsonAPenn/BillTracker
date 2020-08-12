@@ -271,4 +271,7 @@ async function listLabels(auth) {
   }
 
   await connection.close();
+
+  if(erroredBills.length > 0)
+    process.exit(1);
 }
