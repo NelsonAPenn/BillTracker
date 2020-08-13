@@ -245,11 +245,10 @@ async function listLabels(auth) {
     bill.amount = result.amount;
 
     var documentToInsert = Object.assign({}, bill);
-    documentToInsert.status = "scraped";
-    documentToInsert.error = null;
     documentToInsert.metadata = {
-      paymentId: null,
-      paymentRequests: []
+      paymentRequests: [],
+      status: "scraped",
+      error: null
     };
     if(isValidBill(bill))
     {
@@ -258,7 +257,7 @@ async function listLabels(auth) {
     else
     {
       erroredBills.push(bill);
-      documentToInsert.error = "Error scraping bill.";
+      documentToInsert.metadata.error = "Error scraping bill.";
     }
     var query = { emailId: documentToInsert.emailId };
     var result = await collection.replaceOne(query, documentToInsert, { upsert: true } ).catch( e => console.log(e));

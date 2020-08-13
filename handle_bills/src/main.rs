@@ -1,3 +1,9 @@
+mod lib;
+
+use lib::handle_bills;
+use futures::executor::block_on;
+
 fn main() {
-    println!("Hello, world!");
+    let future = handle_bills();
+    block_on(future).unwrap();
 }
