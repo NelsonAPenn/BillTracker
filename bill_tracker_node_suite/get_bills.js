@@ -92,8 +92,8 @@ let billTypes = {
 
 function isValidBill(bill)
 {
-  var fieldsToCheck = ["emailId", "billType", "date", "amount"];
-  for(var i = 0; i < fieldsToCheck.length; i++)
+  let fieldsToCheck = ["emailId", "billType", "date", "amount"];
+  for(let i = 0; i < fieldsToCheck.length; i++)
   {
     if(typeof(bill[fieldsToCheck[i]]) === 'undefined')
       return false;
@@ -109,17 +109,24 @@ function tryGetBillType(emailFrom)
     return billTypes.water;
   if(emailFrom.includes("paymentprocessing@metronetinc.com"))
     return billTypes.internet;
+  if(emailFrom.includes("csr.lexserv@lexingtonky.gov"))
+    return billTypes.sewer;
+  if(emailFrom.includes("myaccount@columbiagasky.com"))
+    return billTypes.gas;
 }
 
 function tryGetAmount(emailBody, billType)
 {
   if(!emailBody)
     return;
-  var regex;
+  let regex;
   switch(billType)
   {
     case billTypes.internet:
       regex = new RegExp(/'dueAmount'.*?=>.*?'(\d+)\.(\d+)'/);
+      break;
+    case billTypes.gas:
+      regex = new RegExp(/\$ (\d+)\.(\d+)/, "i");
       break;
     default:
       regex = new RegExp(/\$(\d+)\.(\d+)/, "i");
@@ -128,7 +135,7 @@ function tryGetAmount(emailBody, billType)
   let match = regex.exec(emailBody);
   if(!match)
     return;
-  var amount = Number(match[1]) + Number(match[2]) * Math.pow(10, -1 * match[2].length);
+  let amount = Number(match[1]) + Number(match[2]) * Math.pow(10, -1 * match[2].length);
   return amount;
 }
 
@@ -136,11 +143,12 @@ function tryGetDate(emailBody, billType)
 {
   if(!emailBody)
     return;
-  var regex;
+  let regex;
   switch(billType)
   {
     case billTypes.gas:
-      regex = new RegExp(/Due.*?on.*?(?<month>\d*)\/(?<day>\d*)/, "i");
+    case billTypes.sewer:
+      regex = new RegExp(/Due.*?on:.*?(?<month>\d*)\/(?<day>\d*)/, "i");
       break;
     case billTypes.internet:
       regex = new RegExp(/'dueDate'.*?=>.*?'(?<month>\d*)\/(?<day>\d*)\/(?<year>\d*)'/);
@@ -152,7 +160,7 @@ function tryGetDate(emailBody, billType)
   let match = regex.exec(emailBody);
   if(!match)
     return;
-  var toReturn = { day: 0, month: 0, year: 0}
+  let toReturn = { day: 0, month: 0, year: 0}
   toReturn.month = Number(match.groups.month);
   toReturn.day = Number(match.groups.day);
   toReturn.year = Number(match.groups.year ? match.groups.year : (new Date()).getFullYear());
@@ -161,20 +169,20 @@ function tryGetDate(emailBody, billType)
 
 function processPayload(payload, billType)
 {
-  var info = { date: undefined, amount: undefined };
+  let info = { date: undefined, amount: undefined };
   // base case
   if(payload.body.size)
   {
-    var messageText = base64urldecode(payload.body.data);
+    let messageText = base64urldecode(payload.body.data);
     info.date = tryGetDate(messageText, billType);
     info.amount =  tryGetAmount(messageText, billType);
   }
   // recursive step
   else
   {
-    for(var i = 0; i < payload.parts.length; i++)
+    for(let i = 0; i < payload.parts.length; i++)
     {
-      var result = processPayload(payload.parts[i], billType);
+      let result = processPayload(payload.parts[i], billType);
       if(typeof(result.date) !== 'undefined')
       {
         info.date = result.date;
@@ -203,48 +211,50 @@ async function listLabels(auth) {
   const db = connection.db("bill_tracker");
   const collection = db.collection("bills");
   const gmail = google.gmail({version: 'v1', auth});
-  var res = await gmail.users.messages.list({
+  let res = await gmail.users.messages.list({
     userId: 'me',
     q: 'label:Bills'
   });
 
   const messageIds = res.data.messages;
-  var messages = [];
-  var known = JSON.parse(fs.readFileSync(RAW_BILLS_PATH).toString());
-  var erroredBills = JSON.parse(fs.readFileSync(ERRORED_BILLS_PATH).toString());
+  let messages = [];
+  let known = JSON.parse(fs.readFileSync(RAW_BILLS_PATH).toString());
+  let erroredBills = [];
 
-  var modified = false;
-  for(var i = 0; i < messageIds.length; i++)
+  let modified = false;
+  for(let i = 0; i < messageIds.length; i++)
   {
-    var exists = known.some((x) => x.emailId === messageIds[i].id);
+    let exists = known.some((x) => x.emailId === messageIds[i].id);
     if(!exists)
     {
       messages.push((await gmail.users.messages.get({ userId: 'me', id: messageIds[i].id})).data);
       modified = true;
     }
   }
-  for(var i = 0; i < messages.length; i++)
+  for(let i = 0; i < messages.length; i++)
   {
-    var from = "";
-    for(var j = 0; j < messages[i].payload.headers.length; j++)
+    let from = "";
+    for(let j = 0; j < messages[i].payload.headers.length; j++)
     {
       if(messages[i].payload.headers[j].name == "From")
       {
         from = messages[i].payload.headers[j].value;
+        break;
       }
     }
-    var bill = {
-      emailId: messageIds[i].id,
+
+    let bill = {
+      emailId: messages[i].id,
       billType: tryGetBillType(from),
       date: undefined,
       amount: undefined
     };
 
-    var result = processPayload(messages[i].payload, bill.billType);
-    bill.date = result.date;
-    bill.amount = result.amount;
+    let scrapeResult = processPayload(messages[i].payload, bill.billType);
+    bill.date = scrapeResult.date;
+    bill.amount = scrapeResult.amount;
 
-    var documentToInsert = Object.assign({}, bill);
+    let documentToInsert = Object.assign({}, bill);
     documentToInsert.metadata = {
       paymentRequests: [],
       status: "scraped",
@@ -259,8 +269,8 @@ async function listLabels(auth) {
       erroredBills.push(bill);
       documentToInsert.metadata.error = "Error scraping bill.";
     }
-    var query = { emailId: documentToInsert.emailId };
-    var result = await collection.replaceOne(query, documentToInsert, { upsert: true } ).catch( e => console.log(e));
+    let query = { emailId: documentToInsert.emailId };
+    let queryResult = await collection.replaceOne(query, documentToInsert, { upsert: true } ).catch( e => console.log(e));
   }
   if(modified)
   {
