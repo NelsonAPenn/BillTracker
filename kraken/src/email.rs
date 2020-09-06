@@ -9,7 +9,7 @@ use base64::encode;
 
 pub struct SmtpServer
 {
-    pub domain: String,
+    pub mail_host: String,
     pub port: String,
     pub username: Option<String>,
     pub password: Option<String>
@@ -26,11 +26,11 @@ impl SmtpServer
     pub fn send(&self, email: Email)
     {
         let connector = SslConnector::builder(SslMethod::tls()).unwrap().build();
-        let stream = TcpStream::connect(format!("{}:{}", &self.domain, &self.port)).unwrap();
-        let mut stream = connector.connect(&format!("{}", &self.domain)[..], stream).unwrap();
+        let stream = TcpStream::connect(format!("{}:{}", &self.mail_host, &self.port)).unwrap();
+        let mut stream = connector.connect(&format!("{}", &self.mail_host)[..], stream).unwrap();
 
         let mut messages:Vec<String> = vec![
-            format!("EHLO {}\r\n", &self.domain)
+            format!("EHLO {}\r\n", &self.mail_host)
         ];
 
         if let Some(username) = &self.username
@@ -40,7 +40,7 @@ impl SmtpServer
                 messages.push(format!("AUTH PLAIN {}\r\n", encode(format!("\0{}\0{}", &username, &password))));
             }
         }
-            
+
         messages.push( format!("MAIL FROM:<{}>\r\n", &email.from) );
 
         for victim in &email.to
