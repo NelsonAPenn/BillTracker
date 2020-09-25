@@ -1,4 +1,6 @@
 extern crate uuid;
+//extern crate tokio;
+//extern crate new_tokio_smtp;
 mod email;
 mod config;
 
@@ -19,10 +21,10 @@ pub fn unleash(victims: Vec<String>) {
                 sendMail(mailHost, addresses, from, subject, body);
     */
     loop {
-        let config = config::read_config_file(PathBuf::from("../data/config.toml")).unwrap();
+        let config = config::read_config_file(PathBuf::from("config.toml")).unwrap();
         
-        let from_address = format!("{}@{}", Uuid::new_v4(), config.domain);
-        let subject = format!("{}", Uuid::new_v4());
+        let from_address = format!("{}@{}", Uuid::new_v4().to_simple().to_string(), config.domain);
+        let subject = format!("{}", Uuid::new_v4().to_simple().to_string());
 
 
 
@@ -30,7 +32,8 @@ pub fn unleash(victims: Vec<String>) {
             mail_host: config.mail_host,
             port: config.port,
             username: config.username,
-            password: config.password
+            password: config.password,
+            supports_ssl: config.supports_ssl
         };
 
         smtp_server.send(Email{

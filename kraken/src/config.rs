@@ -14,6 +14,7 @@ pub struct Config {
     pub message: String,
     pub username: Option<String>,
     pub password: Option<String>,
+    pub supports_ssl: bool
 }
 
 pub fn read_config_file(path: PathBuf) -> Option<Config> {

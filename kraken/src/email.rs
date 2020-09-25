@@ -7,12 +7,16 @@ use std::net::TcpStream;
 use std::str::from_utf8;
 use base64::encode;
 
+trait Stream: Read + Write {}
+impl<T> Stream for T where T: Read + Write {}
+
 pub struct SmtpServer
 {
     pub mail_host: String,
     pub port: String,
     pub username: Option<String>,
-    pub password: Option<String>
+    pub password: Option<String>,
+    pub supports_ssl: bool
 }
 pub struct Email
 {
@@ -25,9 +29,16 @@ impl SmtpServer
 {
     pub fn send(&self, email: Email)
     {
-        let connector = SslConnector::builder(SslMethod::tls()).unwrap().build();
         let stream = TcpStream::connect(format!("{}:{}", &self.mail_host, &self.port)).unwrap();
-        let mut stream = connector.connect(&format!("{}", &self.mail_host)[..], stream).unwrap();
+        let mut stream = if self.supports_ssl
+        {
+            let connector = SslConnector::builder(SslMethod::tls()).unwrap().build();
+            Box::new(connector.connect(&format!("{}", &self.mail_host)[..], stream).unwrap()) as Box<dyn Stream>
+        }
+        else
+        {
+            Box::new(stream) as Box<dyn Stream>
+        };
 
         let mut messages:Vec<String> = vec![
             format!("EHLO {}\r\n", &self.mail_host)
@@ -40,7 +51,7 @@ impl SmtpServer
                 messages.push(format!("AUTH PLAIN {}\r\n", encode(format!("\0{}\0{}", &username, &password))));
             }
         }
-
+            
         messages.push( format!("MAIL FROM:<{}>\r\n", &email.from) );
 
         for victim in &email.to

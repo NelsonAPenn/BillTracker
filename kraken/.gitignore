@@ -11,3 +11,8 @@ Cargo.lock
 
 # swap files
 *.swp
+
+# VS code stuff
+.vscode
+# secrets
+config.toml
