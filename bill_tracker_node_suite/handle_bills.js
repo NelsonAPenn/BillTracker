@@ -135,7 +135,10 @@ async function handle_bills() {
   let to_update = await collection.find( { "metadata.status": "requested" }).toArray();
 
   if(argv.length < 3)
+  {
+    console.log("Need to specify 'dry' or 'wet'.");
     exit(1);
+  }
 
   let dry_run = true;
   if(argv[2] == "dry")
@@ -146,7 +149,11 @@ async function handle_bills() {
   {
     dry_run = false;
   }
-  else{ exit(1); }
+  else
+  {
+    console.log("Need to specify 'dry' or 'wet'.");
+    exit(1);
+  }
 
   for(bill of to_update)
   {

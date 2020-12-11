@@ -263,6 +263,8 @@ async function listLabels(auth) {
     if(isValidBill(bill))
     {
       known.push(bill);
+      console.log("NEW BILL:");
+      console.log(bill);
     }
     else
     {
