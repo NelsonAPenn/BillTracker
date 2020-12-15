@@ -3,9 +3,8 @@
 A suite of programs which is designed to:
 
 - scrape all bills from my email
-- add them to my financial tracking spreadsheet
+- add them to my financial tracking spreadsheet (eventually)
 - send payment requests to my roommates for their portions of each bill
-- unleash the `kraken` on them if they don't pay before the due date
 
 ## Structure
 
@@ -13,8 +12,6 @@ A suite of programs which is designed to:
 `get_bills` scrapes all bills from my email, and adds any new ones into the database.
 
 `handle_bills` adds new bills to my financial spreadsheets and handles making payments or updating the status of existing payments.
-
-The `kraken` is unleashed if my roommates don't complete a bill by its due date.
 
 `driver.sh` coordinates all above programs and sends me a desktop notification if there is any error. 
 
